@@ -5,6 +5,18 @@
 #include <algorithm>
 constexpr long double eps = 1e-11;
 
+long double BinPow(long double x, int pow) {
+    if (pow == 1) {
+        return x;
+    }
+    long double temp = BinPow(x, pow / 2);
+    temp = temp * temp;
+    if (pow%2) {
+        temp *= x;
+    }
+    return temp;
+}
+
 class Polynomial;
 
 class Monomial{
@@ -54,7 +66,6 @@ private:
 };
 
 class Polynomial {
-
 public:
     void AddMono(const Monomial& other) {
         if (monomials.empty()) {
@@ -72,7 +83,7 @@ public:
         monomials.sort();
         std::list<Monomial> temp = monomials;
         monomials.clear();
-        for (auto mono_now:temp) {
+        for (Monomial mono_now:temp) {
             AddMono(mono_now);
         }
     }
@@ -113,7 +124,7 @@ public:
 
     Polynomial operator*(const Monomial& other) {
         Polynomial temp;
-        for (auto mono_now:monomials) {
+        for (Monomial mono_now:monomials) {
             temp.AddMono(mono_now * other);
         }
         temp.Stable();
