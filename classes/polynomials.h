@@ -1,6 +1,9 @@
+//#define _GLIBCXX_DEBUG 1
 #pragma once
-#include <vector>
+
+#include "list.h"
 #include <list>
+#include <vector>
 #include <bitset>
 #include <string>
 
@@ -48,7 +51,7 @@ class Polynomial {
 public:
     Polynomial();
     Polynomial(std::string);
-
+    Polynomial(const Polynomial& other);
     void AddMono(const Monomial& other);
 
     void Stable();
@@ -57,18 +60,54 @@ public:
 
     Polynomial& operator=(const Polynomial& other);
 
-    Polynomial operator+(const Polynomial& other);
+    Polynomial operator+(const Polynomial& other)const;
+
+    Polynomial operator-() const;
+    Polynomial operator-(const Polynomial& other)const;
 
     Polynomial& operator+=(const Polynomial& other);
 
-    Polynomial operator*(const Monomial& other);
+    Polynomial operator*(const Monomial& other)const;
 
-    Polynomial operator*(const Polynomial& other);
+    Polynomial operator*(const Polynomial& other)const;
+
+    std::pair<Polynomial, Polynomial> operator/(const Polynomial& other);
+
+    Polynomial Derivative(int k, int var);//считаем к-ю производную
 
     bool operator==(const Polynomial& other) const;
 
+    int size() const;
+    bool empty()const;
+
     long double Get();
 private:
-    std::list<Monomial> monomials;
+    List<Monomial> monomials;
     std::bitset<26> variables;
+};
+
+
+class DFAPolynomial {
+    public:
+
+    void CheckSymbol(char symb);
+
+    bool CheckString(std::string& input);
+
+    private:
+    enum States{
+        START,
+        SIGN,
+        DIGIT_FACT,
+        AFTER_DOT,
+        DOT,
+        DIGIT_DEG,
+        DEGREE_SPACE,
+        ALPHA,
+        DEGREE,
+        ALPHA_SPACE,
+        DIGIT_SPACE,
+        INVALID
+    };
+    States current_state{States::START};
 };

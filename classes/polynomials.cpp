@@ -1,11 +1,16 @@
+//#define _GLIBCXX_DEBUG 1
+
 #include "polynomials.h"
+//#include "list.h"
+#include<list>
 #include <vector>
-#include <list>
 #include <iostream>
 #include<string>
 #include <ostream>
 #include <string>
 
+
+constexpr long double eps = 1e-11;
 
 
 long double BinPow(long double x, int pow) {
@@ -22,7 +27,6 @@ long double BinPow(long double x, int pow) {
 
 
 
-constexpr long double eps = 1e-11;
 
 
 //Monomials functions
@@ -106,23 +110,23 @@ int CharToInd(char c) {
 
 Polynomial::Polynomial():monomials({}), variables(0){}
 
-
 Polynomial::Polynomial(std::string s) {
     std::string now_factor = "", now_degree = "";
-    char last_char = '0';
+    char last_char = '0', last_var= '0';
     Monomial now_mono;
+    bool was_factor = 0;
     s.push_back('&');
     for (int i = 0;i < s.size(); ++i) {
-        if (std::isdigit(s[i]) || s[i] == '.') {
+        if (isdigit(s[i]) || s[i] == '.') {
             if (last_char == '-' || last_char == '+' || last_char == '0') {
                 now_factor.push_back(s[i]);
             } else {
                 now_degree.push_back(s[i]);
             }
         }
-        if (std::isalpha(s[i]) || s[i] == '+' || s[i] == '-' || s[i] == '&') {
+        if (isalpha(s[i]) || s[i] == '+' || s[i] == '-' || s[i] == '&') {
             if (i != 0) {
-                if (last_char == '-' || last_char == '+' || last_char == '0') {
+                if (!was_factor) {
                     if (now_factor.size()) {
                         now_mono.factor = std::stold(now_factor);
                         now_factor = "";
@@ -133,25 +137,40 @@ Polynomial::Polynomial(std::string s) {
                     if (last_char == '-') {
                         now_mono.factor *= -1;
                     }
-                } else if (now_degree.size()) {
-                        now_mono.degrees[CharToInd(last_char)] += std::stoi(now_degree);
-                        now_degree = "";
-                } else {
-                    now_mono.degrees[CharToInd(last_char)]++;
+                    was_factor = 1;
+                }
+                if (last_char == '^' || s[i] == '&'){
+                    if (last_var != '0') {
+                        if (now_degree.size()) {
+                            now_mono.degrees[CharToInd(last_var)] += std::stoll(now_degree);
+                            now_degree = "";
+                        } else {
+                            now_mono.degrees[CharToInd(last_var)]++;
+                        }
+                    }
                 }
                 if (s[i] == '+' || s[i] == '-' || s[i] == '&') {
                     this->monomials.push_back(now_mono);
+                    last_var = '0';
+                    was_factor = 0;
                     now_mono.Clear();
                 } else {
                     variables[CharToInd(s[i])] = 1;
                 }
             }
-            last_char = s[i];
-            
+        }
+        if (!isdigit(s[i]) && s[i] != ' ' && s[i] != '.') {
+            if (isalpha(s[i])) {
+                last_var = s[i];
+            } else {
+                last_char = s[i];
+            }
         }
     }
     Stable();
 }
+
+Polynomial::Polynomial(const Polynomial& other):monomials(other.monomials), variables(other.variables) {}
 
 void Polynomial::AddMono(const Monomial& other) {
     if (monomials.empty()) {
@@ -163,48 +182,63 @@ void Polynomial::AddMono(const Monomial& other) {
     } else {
         monomials.push_back(other);
     }
-    if (abs(monomials.back().factor) < eps) {
+    if (std::abs(monomials.back().factor) < eps) {
         monomials.pop_back();
     }
 }
 
 void Polynomial::Stable() {
     monomials.sort();
-    std::list<Monomial> temp = monomials;
+    List temp = monomials;
     monomials.clear();
     for (Monomial mono_now:temp) {
         AddMono(mono_now);
     }
 }
 
-Polynomial Polynomial::operator+(const Polynomial& other) {
+Polynomial Polynomial::operator+(const Polynomial& other) const {
     Polynomial temp;
     auto it_this = this->monomials.begin();
     auto it_other = other.monomials.begin();
     while (it_this != this->monomials.end() && it_other != other.monomials.end()) {
         if (*it_this < *it_other) {
-            temp.AddMono(*it_this);
+            temp.AddMono(Monomial(*it_this));
             ++it_this;
         } else {
-            temp.AddMono(*it_other);
+            temp.AddMono(Monomial(*it_other));
             ++it_other;
         }
     }
     while (it_this != this->monomials.end()) {
-        temp.AddMono(*it_this);
+        temp.AddMono(Monomial(*it_this));
         ++it_this;
     }
     while (it_other != other.monomials.end()) {
-        temp.AddMono(*it_other);
+        temp.AddMono(Monomial(*it_other));
         ++it_other;
     }
-    temp.variables = this->variables|other.variables;
+    temp.variables = 0;
+    for (Monomial mono_now:temp.monomials) {
+        for (int i = 0;i < 26; ++i) {
+            if (mono_now.degrees[i]) {
+                temp.variables[i] = 1;
+            }
+        }
+    }
     return temp;
+}
+Polynomial Polynomial::operator-() const{
+    Polynomial res(*this);
+    for (Monomial& mono_now:res.monomials) {
+        mono_now.factor = -mono_now.factor;
+    }
+    return res;
 }
 
 
 Polynomial& Polynomial::operator=(const Polynomial& other) {
-    this->monomials = other.monomials;
+    monomials = other.monomials;
+    variables = other.variables;
     return *this;
 }
 
@@ -215,7 +249,7 @@ Polynomial& Polynomial::operator+=(const Polynomial& other) {
     return *this;
 }
 
-Polynomial Polynomial::operator*(const Monomial& other) {
+Polynomial Polynomial::operator*(const Monomial& other) const{
     Polynomial temp;
     for (Monomial mono_now:monomials) {
         temp.AddMono(mono_now * other);
@@ -223,12 +257,63 @@ Polynomial Polynomial::operator*(const Monomial& other) {
     return temp;
 }
 
-Polynomial Polynomial::operator*(const Polynomial& other) {
+Polynomial Polynomial::operator*(const Polynomial& other) const{
     Polynomial temp;
     for (Monomial mono_other:other.monomials) {
         temp += (*this) * mono_other;
     }
     return temp;
+}
+
+Polynomial Polynomial::operator-(const Polynomial& other) const {
+    return *this + (-other);
+}
+
+std::pair<Polynomial, Polynomial> Polynomial::operator/(const Polynomial& other) {
+    if (((this->variables)|other.variables).count()> 1) {
+        throw "Нельзя делить многочлены с больше, чем одной переменной!";
+    }
+    int x = 0;
+    for (int i = 0;i < 26;++i) {
+        if (this->variables[i] || other.variables[i]) {
+            x = i;
+        }
+    }
+    Polynomial res, rem(*this);
+    while (!rem.monomials.empty() && !other.monomials.empty() && rem.monomials.back().degrees[x] >=
+    other.monomials.back().degrees[x]) {
+        Monomial last_rem = rem.monomials.back(), last_div = other.monomials.back();
+        Monomial new_mono(last_rem.factor/last_div.factor, std::vector<int>(26));
+        new_mono.degrees[x] = last_rem.degrees[x] - last_div.degrees[x];
+        res.AddMono(new_mono);
+        rem = rem-other * new_mono;
+    }
+    rem.Stable();
+    res.Stable();
+    return {res, rem};
+}
+
+Polynomial Polynomial::Derivative(int k, int var) {
+    if (var > 25 || var < 0 || variables[var] == 0) {
+        throw "Нельзя посчитать производную от отсутствующей переменной";
+    }
+    Polynomial res(*this);
+    for (int i = 0;i < k; ++i) {
+        std::vector<List<Monomial>::Iterator> iters_del;
+        for (auto it = res.monomials.begin(); it != res.monomials.end(); ++it) {
+            if (it->degrees[var]== 0) {
+                iters_del.push_back(it);
+            } else {
+                it->factor *= it->degrees[var];
+                it->degrees[var]--;
+            }
+        }
+        for (List<Monomial>::Iterator it_del:iters_del) {
+            res.monomials.erase(it_del);
+        }
+    }
+    res.Stable();
+    return res;
 }
 
 bool Polynomial::operator==(const Polynomial& other) const {
@@ -245,6 +330,15 @@ bool Polynomial::operator==(const Polynomial& other) const {
         ++it_this;
     }
     return true;
+}
+
+
+int Polynomial::size()const{
+    return monomials.size();
+}
+
+bool Polynomial::empty() const{
+    return (size()==0);
 }
 
 long double Polynomial::Get() {
@@ -268,11 +362,153 @@ long double Polynomial::Get() {
 
 std::ostream& operator << (std::ostream& os, const Polynomial& this_poly)
 {
+    bool first = 1;
     for (auto now_mono:this_poly.monomials) {
-        if (now_mono.GetFactor() >= 0) {
+        if (now_mono.GetFactor() >= 0 && !first) {
             os << '+';
         }
         os << now_mono;
+        first = 0;
     }
     return os;
+}
+
+
+void DFAPolynomial::CheckSymbol(char symb) {
+    switch (current_state)
+    {
+        case INVALID:
+            break;
+        case START:
+            if (symb == ' '){
+            //
+            } else if (symb == '+' || symb == '-') {
+                current_state = SIGN;
+            } else if (isdigit(symb)) {
+                current_state = DIGIT_FACT;
+            } else if(isalpha(symb)){
+                current_state = ALPHA;
+            }else {
+                current_state = INVALID;
+            } 
+            break;
+        case SIGN:
+            if (symb == ' ') {
+                //
+            } else if (isalpha(symb)) {
+                current_state = ALPHA;
+            } else if(isdigit(symb)) {
+                current_state = DIGIT_FACT;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case DIGIT_FACT:
+            if (isdigit(symb)) {
+                //
+            } else if (symb == '.') {
+                current_state = DOT;
+            } else if (symb == ' ') {
+                current_state = DIGIT_SPACE;
+            } else if (isalpha(symb)){
+                current_state = ALPHA;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case DOT:
+            if (isdigit(symb)) {
+                current_state = AFTER_DOT;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case AFTER_DOT:
+            if (isdigit(symb)) {
+                // 
+            } else if (symb == ' ') {
+                current_state = DIGIT_SPACE;
+            } else if (isalpha(symb)) {
+                current_state = ALPHA;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case DIGIT_SPACE:
+            if (symb == ' ') {
+                //
+            } else if (symb == '+' || symb == '-') {
+                current_state = SIGN;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case ALPHA:
+            if (isalpha(symb)) {
+                //
+            } else if (symb == ' ') {
+                current_state = ALPHA_SPACE;
+            } else if (symb == '+' || symb == '-') {
+                current_state = SIGN;
+            } else if (symb == '^') {
+                current_state = DEGREE;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case ALPHA_SPACE:
+            if (symb == ' ') {
+                //
+            } else if (symb == '^') {
+                current_state = DEGREE;
+            } else if (symb == '+' || symb == '-'){
+                current_state = SIGN;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case DEGREE:
+            if (symb == ' ') {
+                //
+            } else if (isdigit(symb)) {
+                current_state = DIGIT_DEG;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case DIGIT_DEG:
+            if (isdigit(symb)) {
+                //
+            } else if(isalpha(symb)) {
+                current_state = ALPHA;
+            } else if(symb == '+' || symb == '-') {
+                current_state = SIGN;
+            } else if (symb == ' ') {
+                current_state = DEGREE_SPACE;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+        case DEGREE_SPACE:
+            if (symb == ' ') {
+                //
+            } else if (isalpha(symb)) {
+                current_state = ALPHA;
+            } else if (symb == '+' || symb == '-') {
+                current_state = SIGN;
+            } else {
+                current_state = INVALID;
+            }
+            break;
+    }
+}
+
+bool DFAPolynomial::CheckString(std::string& input) {
+    current_state = START;
+    for (char symb:input) {
+        CheckSymbol(symb);
+    }
+    return (current_state == DIGIT_FACT || current_state == DIGIT_SPACE ||
+            current_state == ALPHA || current_state == ALPHA_SPACE ||
+            current_state == DIGIT_DEG || current_state == DEGREE_SPACE || current_state == AFTER_DOT);
 }

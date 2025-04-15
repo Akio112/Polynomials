@@ -7,6 +7,7 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
+                //"${file}",
                 "main.cpp",
                 "classes/polynomials.cpp",
                 "-o",
