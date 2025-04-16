@@ -60,14 +60,14 @@ void PrintPolynoms(List<Polynomial>& polynoms_print) {
 }
 
 std::pair<int, int> GetTwoPolynoms() {
-    std::cout << "Введите номера полиномов, с которыми вы хотите произвести функцию" << std::endl;
+    std::cout << "Введите номера полиномов, с которыми вы хотите выполнить функцию" << std::endl;
     std::string first_ind_str, second_ind_str;
     std::cin >> first_ind_str >> second_ind_str;
     return {std::stoll(first_ind_str), std::stoll(second_ind_str)};
 }
 
 int GetOnePolynom() {
-    std::cout << "Введите номер полинома, с которым хотите произвести функцию" << std::endl;
+    std::cout << "Введите номер полинома, с которым хотите выполнить функцию" << std::endl;
     std::string ind_poly_str;
     std::cin >> ind_poly_str;
     return std::stoll(ind_poly_str);
@@ -85,7 +85,6 @@ void SaveQuery(List<Polynomial>& DB, const Polynomial& res) {
 
 
 void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string& inp_command) {
-    try {
         if (inp_command == "check") {
             PrintPolynoms(DB);
         } else if (inp_command == "help"){
@@ -110,14 +109,24 @@ void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string
             std::cout << "Полиномы сохранены в save.txt" << std::endl;
         } else if (inp_command == "get") {
             int ind_poly = GetOnePolynom();
-            long double res =  DB[ind_poly].Get();
+            Polynomial need_polynom = DB[ind_poly];
+            std::vector<int> params(26);
+            for (int i = 0;i < 26; ++i) {
+                if (need_polynom.Availible(i)) {
+                    std::cout << "Введите значение для переменной " << char(i+'a') << ":" << std::endl;
+                    std::cin >> params[i];
+                }
+            }
+            long double res =  DB[ind_poly].Get(params);
             std::cout << "Вот ваше значение:" << res << std::endl;
-        } else if (inp_command == "add") {
+        } 
+        else if (inp_command == "add") {
             auto [first_ind,second_ind] = GetTwoPolynoms();
             Polynomial res = DB[first_ind] + DB[second_ind];
             std::cout << "Вот ваше значение:" << res << std::endl;
             SaveQuery(DB, res);
-        } else if (inp_command == "multipl") {
+        } 
+        else if (inp_command == "multipl") {
             auto [first_ind,second_ind] = GetTwoPolynoms();
             Polynomial res = DB[first_ind] * DB[second_ind];
             SaveQuery(DB, res);
@@ -148,22 +157,21 @@ void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string
             std::cin >> path;
             load(DB, path);
         } else if (inp_command == "del") {
-            std::cout << "Введите номер полинома, который вы хотите удалить" << std::endl;
-            std::string ind_str;
-            std::cin >> ind_str;
-            int ind = std::stoll(ind_str);
+            int ind = GetOnePolynom();
             DB.erase(ind);
             std::cout << "Полином успешно удален!" << std::endl;
+        } else if (inp_command == "roots") {
+            int ind = GetOnePolynom();
+            std::vector<int> res = DB[ind].Roots();
+            std::cout << "Вот целые корни многочлена:" << std::endl;
+            for (int root:res) {
+                std::cout << root << ' ';
+            }
+            std::cout << std::endl;
         }else {
             throw "Кажется, вы ввели неверную команду";
         }
-    }
-    catch(const char* error_string) {
-        std::cout << error_string << std::endl;
-    }
-    catch(const std::invalid_argument& e) {
-        std::cout << "Кажется, что-то пошло не так, возможно вы ошиблись с вводом" << std::endl;
-    }
+
 }
 
 
@@ -175,6 +183,14 @@ int main() {
         std::cout << "Напишите команду, которую вы хотите совершить:";
         std::string inp_command;
         std::cin >> inp_command;
-        CommandHandler(checker_poly, DB, inp_command);
+        try {
+            CommandHandler(checker_poly, DB, inp_command);
+        }
+        catch(const char* error_string) {
+            std::cout << error_string << std::endl;
+        }
+        catch(const std::invalid_argument& e) {
+            std::cout << "Кажется, что-то пошло не так, возможно вы ошиблись с вводом" << std::endl;
+        }
     }
 }

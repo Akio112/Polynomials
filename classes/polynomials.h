@@ -75,12 +75,16 @@ public:
 
     Polynomial Derivative(int k, int var);//считаем к-ю производную
 
+
     bool operator==(const Polynomial& other) const;
 
+    bool Availible(int x) const;
     int size() const;
     bool empty()const;
 
-    long double Get();
+    long double Get(const std::vector<int>& params);
+    std::vector<int> Roots();
+
 private:
     List<Monomial> monomials;
     std::bitset<26> variables;

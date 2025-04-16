@@ -139,14 +139,12 @@ Polynomial::Polynomial(std::string s) {
                     }
                     was_factor = 1;
                 }
-                if (last_char == '^' || s[i] == '&'){
-                    if (last_var != '0') {
-                        if (now_degree.size()) {
-                            now_mono.degrees[CharToInd(last_var)] += std::stoll(now_degree);
-                            now_degree = "";
-                        } else {
-                            now_mono.degrees[CharToInd(last_var)]++;
-                        }
+                if (last_var != '0') {
+                    if (now_degree.size()) {
+                        now_mono.degrees[CharToInd(last_var)] += std::stoll(now_degree);
+                        now_degree = "";
+                    } else {
+                        now_mono.degrees[CharToInd(last_var)]++;
                     }
                 }
                 if (s[i] == '+' || s[i] == '-' || s[i] == '&') {
@@ -332,6 +330,9 @@ bool Polynomial::operator==(const Polynomial& other) const {
     return true;
 }
 
+bool Polynomial::Availible(int x) const {
+    return variables[x];
+}
 
 int Polynomial::size()const{
     return monomials.size();
@@ -341,15 +342,8 @@ bool Polynomial::empty() const{
     return (size()==0);
 }
 
-long double Polynomial::Get() {
+long double Polynomial::Get(const std::vector<int>& params) {
     long double res = 0;
-    std::vector<int> params(26);
-    for (int i = 0;i < 26; ++i) {
-        if (variables[i]) {
-            std::cout << "Введите значение для переменной " << char(i+'a') << ":" << std::endl;
-            std::cin >> params[i];
-        }
-    }
     for (Monomial mono_now:monomials) {
         long double temp = mono_now.factor;
         for (int i = 0;i < 26; ++i) {
@@ -359,6 +353,47 @@ long double Polynomial::Get() {
     }
     return res;
 }
+
+std::vector<int> Polynomial::Roots() {
+    if (variables.count() != 1) {
+        throw "нельзя искать корень у многочлена не с одной переменной!";
+    }
+    if (monomials.empty()) {
+        throw "нельзя найти корни у пустого многочлена!";
+    }
+    int ind_var = 0;
+    for (int i = 0;i < 26;++i) {
+        if (variables[i]) {
+            ind_var = i;
+        }
+    }
+    std::vector<int> ans;
+    std::vector<int> params(26);
+    long double free_factor = monomials.front().factor;
+    if (abs(free_factor - (int)free_factor) >= eps) {
+        return ans;
+    }
+    int int_free_fact = free_factor;
+    for (int div = 1;div <= int_free_fact; ++div) {
+        if (int_free_fact%div == 0) {
+            params[ind_var] = div;
+            if (Get(params) < eps) {
+                ans.push_back(div);
+            }
+            params[ind_var] = -div;
+            if (Get(params) < eps) {
+                ans.push_back(-div);
+            }
+            params[ind_var] = 0;
+        }
+    }
+    if (Get(params) < eps) {
+        ans.push_back(0);
+    }
+    return ans;
+}
+
+
 
 std::ostream& operator << (std::ostream& os, const Polynomial& this_poly)
 {
