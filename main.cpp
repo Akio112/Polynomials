@@ -47,6 +47,7 @@ void Help() {
     std::cout << "derative - взять производную от полинома\n";
     std::cout << "end - завершить программу\n";
     std::cout << "help - снова написать все команды в консоль\n";
+    std::cout << "roots - найти целые корни у полинома\n";
     std::cout << "del - удалить полином" << std::endl;
 }
 
@@ -90,7 +91,7 @@ void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string
         } else if (inp_command == "help"){
             Help();
         } else if (inp_command == "addlist") {
-            std::cout << "Введите полином, который хотите добавит: ";
+            std::cout << "Введите полином, который хотите добавить: ";
             std::string new_polynom;
             std::cin.ignore();
             std::getline(std::cin, new_polynom);
@@ -138,12 +139,13 @@ void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string
 
         } else if (inp_command == "derative") {
             int ind_poly = GetOnePolynom();
+            std::cout << "Введите запрос в формате k x, где k- номер производной, а х - название переменной" << std::endl;
             std::string k_str, var_str;
             std::cin >> k_str >> var_str;
             if (var_str.size() != 1) {
                 throw "Нельзя производную не от одной переменной!";
             }
-            int k = std::stoll(k_str), var = var_str[0];
+            int k = std::stoll(k_str), var = var_str[0] - 'a';
             Polynomial res = DB[ind_poly].Derivative(k, var);
             SaveQuery(DB,res);
         } else if (inp_command == "end") {

@@ -1,8 +1,5 @@
-//#define _GLIBCXX_DEBUG 1
-
 #include "polynomials.h"
-//#include "list.h"
-#include<list>
+#include "list.h"
 #include <vector>
 #include <iostream>
 #include<string>
@@ -33,7 +30,7 @@ long double BinPow(long double x, int pow) {
 
 Monomial::Monomial():degrees(std::vector<int>(26)), factor(0){}
 
-Monomial::Monomial(long double factor_init, const std::vector<int>& degrees_init):degrees(degrees_init),
+Monomial::Monomial(long double factor_init, const std::vector<int>& degrees_init = std::vector<int>(26)):degrees(degrees_init),
 factor(factor_init){}
 
 Monomial::Monomial(const Monomial& other):degrees(other.degrees), factor(other.factor) {}
@@ -296,7 +293,7 @@ Polynomial Polynomial::Derivative(int k, int var) {
         throw "Нельзя посчитать производную от отсутствующей переменной";
     }
     Polynomial res(*this);
-    for (int i = 0;i < k; ++i) {
+    for (int i = 0;i < k && res.size(); ++i) {
         std::vector<List<Monomial>::Iterator> iters_del;
         for (auto it = res.monomials.begin(); it != res.monomials.end(); ++it) {
             if (it->degrees[var]== 0) {
@@ -311,6 +308,9 @@ Polynomial Polynomial::Derivative(int k, int var) {
         }
     }
     res.Stable();
+    if (res.empty()) {
+        res.AddMono(Monomial(0));
+    }
     return res;
 }
 
