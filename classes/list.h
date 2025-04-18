@@ -95,6 +95,9 @@ class List {
         }
 
         Type& operator[](int pos) {
+            if (pos < 0) {
+                throw "Вы вышли за пределы списка:(";
+            }
             List<Type>::Iterator it = begin();
             if (it == end()) {
                 throw "Вы вышли за пределы списка:(";

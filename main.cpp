@@ -36,7 +36,8 @@ void load(List<Polynomial>& poly_list, const std::string& path_load) {
 }
 
 void Help() {
-    std::cout << "check - Посмотреть, какие полиномы лежат в БД\n";
+    std::cout << "check - посмотреть, какие полиномы лежат в БД\n";
+    std::cout << "compare - проверить на равенство два полинома\n";
     std::cout << "load - эспортировать полиномы из файлика(они должны быть каждый на своей строке в формате ввода)\n";
     std::cout << "save - сохранить полиномы в текстовый файлик\n";
     std::cout << "get - получить значение от полинома в точке\n";
@@ -44,7 +45,7 @@ void Help() {
     std::cout << "addlist - Добавить полином:\n";
     std::cout << "multipl - Перемножить полиномы:\n";
     std::cout << "add - сложить 2 полинома\n";
-    std::cout << "derative - взять производную от полинома\n";
+    std::cout << "derivative - взять производную от полинома\n";
     std::cout << "end - завершить программу\n";
     std::cout << "help - снова написать все команды в консоль\n";
     std::cout << "roots - найти целые корни у полинома\n";
@@ -75,7 +76,6 @@ int GetOnePolynom() {
 }
 
 void SaveQuery(List<Polynomial>& DB, const Polynomial& res) {
-    if (res.empty()) return;
     std::cout << "Хотите сохранить полином " << res << "? y/n"<<  std::endl;
     std::string ans;
     std::cin >> ans;
@@ -86,19 +86,27 @@ void SaveQuery(List<Polynomial>& DB, const Polynomial& res) {
 
 
 void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string& inp_command) {
-        if (inp_command == "check") {
+
+    if (inp_command == "check") {
             PrintPolynoms(DB);
+        } else if (inp_command == "compare") {
+            auto [first, second] = GetTwoPolynoms();
+            if (DB[first] == DB[second]) {
+                std::cout << "Эти полиномы равны:)" << std::endl;
+            } else {
+                std::cout << "Эти два полинома не равны:(" << std::endl;
+            }
         } else if (inp_command == "help"){
             Help();
         } else if (inp_command == "addlist") {
-            std::cout << "Введите полином, который хотите добавить: ";
+            std::cout << "Введите полином, который хотите добавить" << std::endl;
             std::string new_polynom;
             std::cin.ignore();
             std::getline(std::cin, new_polynom);
             if (checker_poly.CheckString(new_polynom)) {
                 DB.push_back(Polynomial(new_polynom));
             } else {
-                throw "Неправильный формат ввода полинома!";
+                throw "Неправильный формат ввода полинома!Ваш полином заканчивается неверным символом";
             }
         } else if (inp_command == "load") {
             std::cout << "Введите файл, откуда хотите загрузить полином" << std::endl;
@@ -109,13 +117,16 @@ void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string
             save(DB);
             std::cout << "Полиномы сохранены в save.txt" << std::endl;
         } else if (inp_command == "get") {
+
             int ind_poly = GetOnePolynom();
             Polynomial need_polynom = DB[ind_poly];
             std::vector<int> params(26);
             for (int i = 0;i < 26; ++i) {
                 if (need_polynom.Availible(i)) {
                     std::cout << "Введите значение для переменной " << char(i+'a') << ":" << std::endl;
-                    std::cin >> params[i];
+                    std::string inp_var;
+                    std::cin >> inp_var;
+                    params[i] = std::stoll(inp_var);
                 }
             }
             long double res =  DB[ind_poly].Get(params);
@@ -137,7 +148,7 @@ void CommandHandler(DFAPolynomial& checker_poly,List<Polynomial>& DB,std::string
             SaveQuery(DB, res);
             SaveQuery(DB, rem);
 
-        } else if (inp_command == "derative") {
+        } else if (inp_command == "derivative") {
             int ind_poly = GetOnePolynom();
             std::cout << "Введите запрос в формате k x, где k- номер производной, а х - название переменной" << std::endl;
             std::string k_str, var_str;
@@ -193,6 +204,9 @@ int main() {
         }
         catch(const std::invalid_argument& e) {
             std::cout << "Кажется, что-то пошло не так, возможно вы ошиблись с вводом" << std::endl;
+        }
+        catch (const std::string& error_string) {
+            std::cout << error_string << std::endl;
         }
     }
 }

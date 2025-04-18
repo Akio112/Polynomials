@@ -1,5 +1,6 @@
 #include "polynomials.h"
 #include "list.h"
+#include <math.h>
 #include <vector>
 #include <iostream>
 #include<string>
@@ -84,7 +85,11 @@ void Monomial::Clear() {
 std::ostream& operator << (std::ostream& os, const Monomial& this_mono)
 {
     std::string temp = "";
-    temp += std::to_string(this_mono.factor);
+    if (abs(this_mono.factor - ((int)this_mono.factor)) < eps) {
+        temp += std::to_string((int)this_mono.factor);
+    } else {
+        temp += std::to_string(this_mono.factor);
+    }
     for (int i = 0;i < 26; ++i) {
         if (this_mono.degrees[i] != 0) {
             temp.push_back('a'+i);
@@ -170,14 +175,12 @@ Polynomial::Polynomial(const Polynomial& other):monomials(other.monomials), vari
 void Polynomial::AddMono(const Monomial& other) {
     if (monomials.empty()) {
         monomials.push_back(other);
-        return;
-    }
-    if (monomials.back() ==(other)) {
+    } else if (monomials.back() ==(other)) {
         monomials.back().factor += other.factor;
     } else {
         monomials.push_back(other);
     }
-    if (std::abs(monomials.back().factor) < eps) {
+    if (abs(monomials.back().factor) < eps) {
         monomials.pop_back();
     }
 }
@@ -188,6 +191,14 @@ void Polynomial::Stable() {
     monomials.clear();
     for (Monomial mono_now:temp) {
         AddMono(mono_now);
+    }
+    variables = 0;
+    for (Monomial mono_now:this->monomials) {
+        for (int i = 0;i < 26; ++i) {
+            if (mono_now.degrees[i]) {
+                this->variables[i] = 1;
+            }
+        }
     }
 }
 
@@ -265,9 +276,10 @@ Polynomial Polynomial::operator-(const Polynomial& other) const {
 }
 
 std::pair<Polynomial, Polynomial> Polynomial::operator/(const Polynomial& other) {
-    if (((this->variables)|other.variables).count()> 1) {
-        throw "Нельзя делить многочлены с больше, чем одной переменной!";
+    if (((this->variables)|other.variables).count() !=1) {
+        throw "Нельзя делить многочлены с не одной пееременной!";
     }
+
     int x = 0;
     for (int i = 0;i < 26;++i) {
         if (this->variables[i] || other.variables[i]) {
@@ -289,8 +301,8 @@ std::pair<Polynomial, Polynomial> Polynomial::operator/(const Polynomial& other)
 }
 
 Polynomial Polynomial::Derivative(int k, int var) {
-    if (var > 25 || var < 0 || variables[var] == 0) {
-        throw "Нельзя посчитать производную от отсутствующей переменной";
+    if (var > 25 || var < 0) {
+        throw "Нельзя посчитать производную не от переменной";
     }
     Polynomial res(*this);
     for (int i = 0;i < k && res.size(); ++i) {
@@ -377,11 +389,11 @@ std::vector<int> Polynomial::Roots() {
     for (int div = 1;div <= int_free_fact; ++div) {
         if (int_free_fact%div == 0) {
             params[ind_var] = div;
-            if (Get(params) < eps) {
+            if (abs(Get(params)) < eps) {
                 ans.push_back(div);
             }
             params[ind_var] = -div;
-            if (Get(params) < eps) {
+            if (abs(Get(params)) < eps) {
                 ans.push_back(-div);
             }
             params[ind_var] = 0;
@@ -405,6 +417,9 @@ std::ostream& operator << (std::ostream& os, const Polynomial& this_poly)
         os << now_mono;
         first = 0;
     }
+    if (this_poly.empty()) {
+        os << 0;
+    }
     return os;
 }
 
@@ -421,21 +436,23 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = SIGN;
             } else if (isdigit(symb)) {
                 current_state = DIGIT_FACT;
-            } else if(isalpha(symb)){
+            } else if(isalpha(symb)&& islower(symb)){
                 current_state = ALPHA;
             }else {
                 current_state = INVALID;
+                throw "В начале могут быть только символы, цифры или переменные!";
             } 
             break;
         case SIGN:
             if (symb == ' ') {
                 //
-            } else if (isalpha(symb)) {
+            } else if (isalpha(symb) && islower(symb)) {
                 current_state = ALPHA;
             } else if(isdigit(symb)) {
                 current_state = DIGIT_FACT;
             } else {
                 current_state = INVALID;
+                throw "После знака может быть цифра или переменная!";
             }
             break;
         case DIGIT_FACT:
@@ -445,10 +462,13 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = DOT;
             } else if (symb == ' ') {
                 current_state = DIGIT_SPACE;
-            } else if (isalpha(symb)){
+            } else if (isalpha(symb)&& islower(symb)){
                 current_state = ALPHA;
+            } else if (symb == '+' || symb == '-') {
+                current_state = SIGN;
             } else {
                 current_state = INVALID;
+                throw "после коэффицента должен быть либо многочлен, либо знак!";
             }
             break;
         case DOT:
@@ -456,6 +476,7 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = AFTER_DOT;
             } else {
                 current_state = INVALID;
+                throw "После точки не может быть ничего, кроме продолжения многочлена!";
             }
             break;
         case AFTER_DOT:
@@ -463,10 +484,13 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 // 
             } else if (symb == ' ') {
                 current_state = DIGIT_SPACE;
-            } else if (isalpha(symb)) {
+            } else if (isalpha(symb)&& islower(symb)) {
                 current_state = ALPHA;
+            } else if (symb == '+' || symb == '-'){
+                current_state = SIGN;
             } else {
                 current_state = INVALID;
+                throw "после коэффицента должен быть либо многочлен, либо знак!";
             }
             break;
         case DIGIT_SPACE:
@@ -476,10 +500,11 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = SIGN;
             } else {
                 current_state = INVALID;
+                throw "После отделенного пробелом числа может стоять только знак!";
             }
             break;
         case ALPHA:
-            if (isalpha(symb)) {
+            if (isalpha(symb) && islower(symb)) {
                 //
             } else if (symb == ' ') {
                 current_state = ALPHA_SPACE;
@@ -489,6 +514,7 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = DEGREE;
             } else {
                 current_state = INVALID;
+                throw "после переменной не должно быть цифр или иных неподходящих знаков!";
             }
             break;
         case ALPHA_SPACE:
@@ -500,6 +526,7 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = SIGN;
             } else {
                 current_state = INVALID;
+                throw "Между переменными или многочленами не должно быть такого символа!";
             }
             break;
         case DEGREE:
@@ -509,12 +536,13 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = DIGIT_DEG;
             } else {
                 current_state = INVALID;
+                throw "После знака степени может быть только степень в виде цисла!";
             }
             break;
         case DIGIT_DEG:
             if (isdigit(symb)) {
                 //
-            } else if(isalpha(symb)) {
+            } else if(isalpha(symb)&& islower(symb)) {
                 current_state = ALPHA;
             } else if(symb == '+' || symb == '-') {
                 current_state = SIGN;
@@ -522,17 +550,19 @@ void DFAPolynomial::CheckSymbol(char symb) {
                 current_state = DEGREE_SPACE;
             } else {
                 current_state = INVALID;
+                throw "После степени переменной может следовать только либо следующая переменная, либо следующий многочлен";
             }
             break;
         case DEGREE_SPACE:
             if (symb == ' ') {
                 //
-            } else if (isalpha(symb)) {
+            } else if (isalpha(symb)&& islower(symb)) {
                 current_state = ALPHA;
             } else if (symb == '+' || symb == '-') {
                 current_state = SIGN;
             } else {
                 current_state = INVALID;
+                throw "После степени переменной может следовать только либо следующая переменная, либо следующий многочлен";
             }
             break;
     }
@@ -540,8 +570,14 @@ void DFAPolynomial::CheckSymbol(char symb) {
 
 bool DFAPolynomial::CheckString(std::string& input) {
     current_state = START;
-    for (char symb:input) {
-        CheckSymbol(symb);
+    for (int i = 0;i < input.size(); ++i) {
+        char symb = input[i];
+        try {
+            CheckSymbol(symb);
+        }catch(const char* error_string) {
+            throw "Неправильный формат ввода полинома!Ошибка на " + std::to_string(i + 1)+ " символе:\n"+ error_string;
+        }
+
     }
     return (current_state == DIGIT_FACT || current_state == DIGIT_SPACE ||
             current_state == ALPHA || current_state == ALPHA_SPACE ||
